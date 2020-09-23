@@ -6,6 +6,7 @@
 #include <sys/socket.h> 
 #include <netinet/in.h> 
 #include <arpa/inet.h> 
+#include <string.h>
 
 int main(int argc, char *argv[]) {
 	int sock, test, rec, peer;
@@ -14,11 +15,14 @@ int main(int argc, char *argv[]) {
 	struct hostent* host;
 	struct sockaddr_in sockInfo;
 	char userName[10], password[10], serverMessage[250];
+	char loginName[20], loginPass[20];
+	char message[] = "OPTS UTF8 ON";
 	
 	if (argc < 2 || argc > 2) {
 		printf("Usage: %s <server name>\nPlease try again and enter server name.\n", argv[0]);
 		exit(-1);
 	}
+	
 	if (argc == 2) {
 		serverName = argv[1];
 	}
@@ -28,7 +32,7 @@ int main(int argc, char *argv[]) {
 		exit(-1);
 	}
 	IPAddress = inet_ntoa(*((struct in_addr*)host->h_addr_list[0])); 
-	printf("IP address = %s\n", IPAddress);
+	
   
 	printf("Please enter username:\nUsername: ");
 	fgets(userName, 10, stdin);
@@ -39,6 +43,15 @@ int main(int argc, char *argv[]) {
 		perror("Socket formation failed");
 		exit(-1);
 	}
+	printf("Socket creation successful.\n");
+	
+	strcpy(loginName, "USER ");
+	strcat(loginName, userName);
+	
+	strcpy(loginPass, "PASS ");
+	strcat(loginPass, password);
+	strcat(loginPass, "\r");
+	printf("password: %s", loginPass);
 	
 	sockInfo.sin_family = AF_INET;
 	sockInfo.sin_port = htons(21);
@@ -47,15 +60,23 @@ int main(int argc, char *argv[]) {
 		perror("Inet_pton failed");
 		exit(-1);
 	}
+	
+	//login(sock, sockInfo, loginName, loginPass);
 	printf("Connecting...\n");
 	if (connect(sock, (struct sockaddr *)&sockInfo, sizeof(sockInfo)) < 0) {
 		perror("Connection failed");
 		exit(-1);
 	}
-	
 	printf("Connection successful.\n");
 	
 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	printf("Server reply: %.*s", rec, serverMessage);
+	send(sock, loginName, sizeof(loginName), 0);
+	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	printf("Server reply: %.*s", rec, serverMessage);
+	send(sock, loginPass, strlen(loginPass), 0);
+	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	printf("Server reply: %.*s", rec, serverMessage);
 	
 	close(sock);
 	return 0;
