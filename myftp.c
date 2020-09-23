@@ -6,11 +6,14 @@
 #include <sys/socket.h> 
 #include <netinet/in.h> 
 #include <arpa/inet.h> 
+#include <string.h>
 
 int main(int argc, char *argv[]) {
 	char* serverName;
 	char* IPAddress;
 	struct hostent* host;
+	char userName[10];
+	char password[10];
 	
 	if (argc < 2 || argc > 2) {
 		printf("Usage: %s <server name>\nPlease try again and enter server name.\n", argv[0]);
@@ -28,5 +31,13 @@ int main(int argc, char *argv[]) {
 	printf("IP address = %s\n", IPAddress);
   
 	printf("Server name is '%s'.\n", serverName);
+	
+	printf("Please enter username:\nUsername: ");
+	fgets(userName, 10, stdin);
+	strtok(userName, "\n");
+	printf("Please enter password:\nPassword: ");
+	fgets(password, 10, stdin);
+	strtok(password, "\n");
+	
 	return 0;
 }
