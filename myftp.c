@@ -7,6 +7,7 @@
 #include <netinet/in.h> 
 #include <arpa/inet.h> 
 #include <string.h>
+#include <ctype.h>
 
 static int sock;
 static int sock_data;
@@ -29,7 +30,7 @@ int main(int argc, char *argv[]) {
 	char* IPAddress;
 	struct hostent* host;
 	struct sockaddr_in sockInfo;
-	char userName[30], password[30], choice[20];
+	char userName[30], password[30], choice[20], fileDir[20];
 	
 	if (argc < 2 || argc > 2) {
 		printf("Usage: %s <server name>\nPlease try again and enter server name.\n", argv[0]);
@@ -88,28 +89,42 @@ int main(int argc, char *argv[]) {
 	
 	send(sock, userName, (int)strlen(userName), 0);
 	
-	rec = recv(sock, serverMessage, sizeof(searverMessage), 0);
+	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
 	printf("Server reply: %.*s", rec, serverMessage);
 	
 	send(sock, password, (int)strlen(password), 0);
 	
 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
 	printf("Server reply: %.*s", rec, serverMessage);
-	
+	getchar();
 	while (1) {
 		printf("myftp> ");
-		scanf("%s", choice);
+		fgets(choice, 20, stdin);
+		strtok(choice, "\n");
 		
 		if (strcmp(choice, "quit") == 0) {
 			myftp_quit();
 			break;
 		}
-	
-		if (strcmp(choice, "ls") == 0) {
+		else if (strcmp(choice, "ls") == 0) {
 			printf("ls method here\n");
+		}	
+		else if (strncmp(choice, "cd ", 3) == 0) {
+			printf("change directory method here\n");
+		}
+		else if (strncmp(choice, "get ", 4) == 0) {
+			printf("get remote file method here\n");
+		}
+		else if (strncmp(choice, "put ", 4) == 0) {
+			printf("put remote file method here\n");
+		}
+		else if (strncmp(choice, "delete ", 7) == 0) {
+			printf("delete remote file method here\n");
+		}
+		else {
+			printf("Invalid command.\n");
 		}
 		
-		//if (strcmp(choice, 
 	}	
 	
 	return 0;
