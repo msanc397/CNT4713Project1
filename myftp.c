@@ -8,15 +8,23 @@
 #include <arpa/inet.h> 
 #include <string.h>
 
-static char message_buffer[1024];
+static int sock;
+static int sock_data;
+static char buffer[1024];
+
+void myftp_quit() {
+	strcpy(buffer, "QUIT\r\n");
+	send(sock, buffer, strlen(buffer), 0);
+	close(sock);
+}
 
 int main(int argc, char *argv[]) {
-	int sock, sock_receive, test, rec, len;
+	int test, rec, len;
 	char* serverName;
 	char* IPAddress;
 	struct hostent* host;
 	struct sockaddr_in sockInfo;
-	char userName[30], password[30], serverMessage[250], buffer[40], buffer2[40];
+	char userName[30], password[30], serverMessage[250], choice[20];
 	
 	if (argc < 2 || argc > 2) {
 		printf("Usage: %s <server name>\nPlease try again and enter server name.\n", argv[0]);
@@ -83,9 +91,23 @@ int main(int argc, char *argv[]) {
 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
 	printf("Server reply: %.*s", rec, serverMessage);
 	
-	//continue here
+	while (1) {
+		printf("myftp> ");
+		scanf("%s", choice);
+		
+		if (strcmp(choice, "quit") == 0) {
+			myftp_quit();
+			break;
+		}
+	
+		if (strcmp(choice, "ls") == 0) {
+			printf("ls method here\n");
+		}
 	
 	
-	close(sock);
+	
+	
+	}	
+	
 	return 0;
 }
