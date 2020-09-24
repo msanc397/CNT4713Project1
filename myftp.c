@@ -10,21 +10,26 @@
 
 static int sock;
 static int sock_data;
+static int rec;
 static char buffer[1024];
+static char serverMessage[1024];
 
 void myftp_quit() {
 	strcpy(buffer, "QUIT\r\n");
 	send(sock, buffer, strlen(buffer), 0);
+	strcpy(serverMessage, "");
+	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	printf("Server reply: %.*s", rec, serverMessage);
 	close(sock);
 }
 
 int main(int argc, char *argv[]) {
-	int test, rec, len;
+	int test, len;
 	char* serverName;
 	char* IPAddress;
 	struct hostent* host;
 	struct sockaddr_in sockInfo;
-	char userName[30], password[30], serverMessage[250], choice[20];
+	char userName[30], password[30], choice[20];
 	
 	if (argc < 2 || argc > 2) {
 		printf("Usage: %s <server name>\nPlease try again and enter server name.\n", argv[0]);
@@ -83,7 +88,7 @@ int main(int argc, char *argv[]) {
 	
 	send(sock, userName, (int)strlen(userName), 0);
 	
-	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	rec = recv(sock, serverMessage, sizeof(searverMessage), 0);
 	printf("Server reply: %.*s", rec, serverMessage);
 	
 	send(sock, password, (int)strlen(password), 0);
@@ -103,10 +108,8 @@ int main(int argc, char *argv[]) {
 		if (strcmp(choice, "ls") == 0) {
 			printf("ls method here\n");
 		}
-	
-	
-	
-	
+		
+		//if (strcmp(choice, 
 	}	
 	
 	return 0;
