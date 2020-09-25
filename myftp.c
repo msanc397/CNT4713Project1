@@ -16,6 +16,7 @@
  static char buffer[1024];
  static char serverMessage[1024];
 
+
  void myftp_quit(){ 
  strcpy(buffer, "QUIT\r\n");
  	send(sock, buffer, strlen(buffer), 0);
@@ -94,9 +95,6 @@ int main(int argc, char *argv[]) {
 	printf("Server reply: %.*s", rec,serverMessage);
 
 	send(sock,password,(int)strlen(password),0);
-
-	rec = recv(sock,serverMessage, sizeof(serverMessage),0);
-	printf("Server reply: %.*s", rec,serverMessage);
 
 	//getchar();
 	while (1)
