@@ -8,7 +8,7 @@
 #include <netinet/in.h> 
 #include <arpa/inet.h> 
 #include <string.h>
-#include<ctype.h>
+#include <ctype.h>
 
  static int sock;
  static int sock_data;
