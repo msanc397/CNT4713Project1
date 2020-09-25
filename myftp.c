@@ -24,9 +24,6 @@ void myftp_quit() {
 	close(sock);
 }
 
-//char* command_split(
-
-
 int main(int argc, char *argv[]) {
 	int test, len;
 	char* serverName;
