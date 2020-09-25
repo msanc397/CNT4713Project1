@@ -95,6 +95,9 @@ int main(int argc, char *argv[]) {
 	printf("Server reply: %.*s", rec,serverMessage);
 
 	send(sock,password,(int)strlen(password),0);
+	
+	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	printf("Server reply: %.*s", rec, serverMessage);
 
 	//getchar();
 	while (1)
