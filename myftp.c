@@ -24,6 +24,9 @@ void myftp_quit() {
 	close(sock);
 }
 
+//char* command_split(
+
+
 int main(int argc, char *argv[]) {
 	int test, len;
 	char* serverName;
@@ -110,16 +113,24 @@ int main(int argc, char *argv[]) {
 			printf("ls method here\n");
 		}	
 		else if (strncmp(choice, "cd ", 3) == 0) {
-			printf("change directory method here\n");
+			strncpy(fileDir, ((char*)choice)+3, strlen(choice)-1);
+			printf("File name: %s\n", fileDir);
+			//myftp_changedir(fileDir);
 		}
 		else if (strncmp(choice, "get ", 4) == 0) {
-			printf("get remote file method here\n");
+			strncpy(fileDir, ((char*)choice)+4, strlen(choice)-1);
+			printf("File name: %s\n", fileDir);
+			//myftp_getfile(fileDir);
 		}
 		else if (strncmp(choice, "put ", 4) == 0) {
-			printf("put remote file method here\n");
+			strncpy(fileDir, ((char*)choice)+4, strlen(choice)-1);
+			printf("File name: %s\n", fileDir);
+			//myftp_putfile(fileDir);
 		}
 		else if (strncmp(choice, "delete ", 7) == 0) {
-			printf("delete remote file method here\n");
+			strncpy(fileDir, ((char*)choice)+7, strlen(choice)-1);
+			printf("File name: %s\n", fileDir);
+			//myftp_deletefile(fileDir);
 		}
 		else {
 			printf("Invalid command.\n");
