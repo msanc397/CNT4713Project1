@@ -144,6 +144,7 @@ int main(int argc, char *argv[]) {
  		else {
  			printf("Invalid command.\n");
  		}
+		 
 	}
 	
 	//close(sock);
