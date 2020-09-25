@@ -48,6 +48,7 @@ int main(int argc, char *argv[]) {
 		exit(-1);
 	}
 	IPAddress = inet_ntoa(*((struct in_addr*)host->h_addr_list[0])); 
+	printf("IP address = %s\n", IPAddress);
 		
 	sockInfo.sin_family = AF_INET;
 	sockInfo.sin_port = htons(21);
@@ -95,10 +96,10 @@ int main(int argc, char *argv[]) {
 	printf("Server reply: %.*s", rec,serverMessage);
 
 	send(sock,password,(int)strlen(password),0);
-	
-	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
-	printf("Server reply: %.*s", rec, serverMessage);
 
+	rec = recv(sock, serverMessage,sizeof(serverMessage),0);
+	printf("Server reply: %.*s", rec, serverMessage);
+	
 	//getchar();
 	while (1)
 	{
