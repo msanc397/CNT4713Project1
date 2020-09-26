@@ -179,8 +179,17 @@ int main(int argc, char *argv[]) {
 		}
 		else if (strncmp(choice, "delete ", 7) == 0) {
 			strncpy(fileDir, ((char*)choice)+7, strlen(choice)-1);
-			printf("File name: %s\n", fileDir);
-			//myftp_deletefile(fileDir);
+			sprintf(buffer, "DELE %s\r\n", fileDir);
+
+			send(sock, buffer, strlen(buffer),0);
+			rec = recv(sock,serverMessage,strlen(serverMessage),0);
+			printf("Server reply: %.*s",rec,serverMessage);
+			
+			if (strstr(serverMessage, "550") != NULL) {
+				printf("DELETE FAILED.\n");
+			} else {
+				printf("DELETE SUCCESSFUL.\n");
+			}
 		}
 		else {
 			printf("Invalid command.\n");
