@@ -1,4 +1,5 @@
 
+
 #include <stdio.h> 
 #include <stdlib.h> 
 #include <unistd.h> 
@@ -60,7 +61,7 @@ static int ftp_receive_response(char *resp, int len){
 
 
 //ftp entering in passive mode
-int myftp_passivemode(int *port) {
+int myftp_passivemode(char *IPAddress, int *port) {
  	int h1, h2, h3, h4, p1, p2;
  	char *result;
 
@@ -78,6 +79,7 @@ int myftp_passivemode(int *port) {
 
  	*port = (p1*256) + p2;
  	return 1;
+
  }
 
  
@@ -91,11 +93,11 @@ int myftp_passivemode(int *port) {
  		perror("Connection failed");
  		exit(-1);
  	}
- 	printf("Connection successful.\n");
-
-	 return 1;
+ 	
+	return printf("Connection successful.\n");
  }
 
+//myftp> get
  int myftp_getfile(char* fileName){
 	 int port, fileSize;
 
@@ -105,7 +107,7 @@ int myftp_passivemode(int *port) {
  	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
  	printf("Server reply: %.*s", rec, serverMessage);
 
- 	myftp_passivemode(&port);
+ 	myftp_passivemode(IPAddress,&port);
  	myftp_datasocketOpen(port);
 
  	strcpy(buffer, "");
@@ -118,6 +120,9 @@ int myftp_passivemode(int *port) {
  	sprintf(buffer, "RETR %s\r\n", fileName);
  	send(sock, buffer, strlen(buffer), 0);
  	strcpy(serverMessage, "");
+
+	 myftp_passivemode(IPAddress, &port);
+	 printf("Port = %d\n",port);
 
 	 while ((rec = recv(sock, serverMessage, sizeof(serverMessage), 0)) > 0) {
  		serverMessage[rec] = '\0';
@@ -136,10 +141,23 @@ int myftp_passivemode(int *port) {
 
  }
 
+ /*//delete file
+ 	int myftp_deletefile(char*fileName){
+	
+	strcpy(buffer, "DELE\r\n");
+ 	strcpy(serverMessage, "");
+	 send(sock, buffer, strlen(buffer), 0);
+ 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+ 	printf("Server reply: %.*s", rec, serverMessage);
+	 printf("File has been deleted.");
+ 	close(sock);
+ }
+*/
+
  void myftp_list(){
 		int port;
 
-		myftp_passivemode(&port);
+		myftp_passivemode(IPAddress,&port);
 		myftp_datasocketOpen(port);
 		strcpy(buffer, "NLST\r\n");
  		send(sock, buffer, (int)strlen(buffer), 0);
@@ -154,18 +172,7 @@ int myftp_passivemode(int *port) {
 		 close(sock_data);
  }
 
- //delete file
-/* int myftp_deletefile(char*fileName){
-	
-	strcpy(buffer, "DELE\r\n");
- 	send(sock, buffer, strlen(buffer), 0);
- 	strcpy(serverMessage, "");
- 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
- 	printf("Server reply: %.*s", rec, serverMessage);
-	 printf("File has been deleted.");
- 	close(sock);
- }*/
-
+ 
  //Download file
  /*int myftp_getfile(char* fileName) {
  	int port;
@@ -198,7 +205,7 @@ int main(int argc, char *argv[]) {
     int test, len, numBytes;
     char* serverName;
     struct hostent* host;
-    char userName[10], password[10], choice[20], fileDir[20];
+    char userName[10], password[10], choice[20], fileDir[20], ch[4096];
    
    if (argc < 2 || argc > 2) {
 		printf("Usage: %s <server name>\nPlease try again and enter server name.\n", argv[0]);
@@ -321,8 +328,24 @@ int main(int argc, char *argv[]) {
 		//myftp> delete remote-file
 		//delete  file "remote-file" from remote server.
  		else if (strncmp(choice, "delete", 7) == 0) {
- 			strncpy(fileDir, ((char*)choice)+7, strlen(choice)-1);
-			printf("File name: %s\n", fileDir);
+			 printf("Are you sure you want to delete this file? Yes/No \n");
+			 scanf("%s", ch);
+
+			 if(strcasecmp(ch, "Yes") != 0 || strcasecmp(ch,"yes") != 0)
+			 	continue;
+
+			sprintf(serverMessage, "DELE %s\r\n", choice + 3);
+
+			send(sock, fileDir, strlen(fileDir),0);
+			rec = recv(sock,serverMessage,strlen(serverMessage),0);
+			
+			printf("Server reply: %.*s",rec,serverMessage);
+			if(strstr(serverMessage,"250 ") != NULL || strstr(serverMessage,"450 ") != NULL || strstr(serverMessage,"530 ") != NULL || strstr(serverMessage,"500 ") != NULL|| strstr(serverMessage,"501 ") != NULL || strstr(serverMessage,"421 ") != NULL || strstr(serverMessage,"502 ") != NULL || strstr(serverMessage,"550 ") != NULL){
+				printf("File deleted.");
+			}
+			else{
+				printf("DELETE failed");
+			}
  		}
 
 		//ftp server will quit and 
