@@ -141,18 +141,18 @@ int myftp_passivemode(char *IPAddress, int *port) {
 
  }
 
- /*//delete file
- 	int myftp_deletefile(char*fileName){
+ //delete file
+ 	void myftp_deletefile(char*fileName){
 	
 	strcpy(buffer, "DELE\r\n");
  	strcpy(serverMessage, "");
 	 send(sock, buffer, strlen(buffer), 0);
  	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
  	printf("Server reply: %.*s", rec, serverMessage);
-	 printf("File has been deleted.");
- 	close(sock);
+	 printf("File deleted.");
+     close(sock);
+
  }
-*/
 
  void myftp_list(){
 		int port;
@@ -170,6 +170,7 @@ int myftp_passivemode(char *IPAddress, int *port) {
  		}
 
 		 close(sock_data);
+		  rec=226;
  }
 
  
@@ -205,7 +206,7 @@ int main(int argc, char *argv[]) {
     int test, len, numBytes;
     char* serverName;
     struct hostent* host;
-    char userName[10], password[10], choice[20], fileDir[20], ch[4096];
+    char userName[30], password[30], choice[20], fileDir[20], ch[4096];
    
    if (argc < 2 || argc > 2) {
 		printf("Usage: %s <server name>\nPlease try again and enter server name.\n", argv[0]);
