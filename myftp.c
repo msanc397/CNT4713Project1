@@ -108,16 +108,18 @@ int myftp_getfile(char* fileName) {
 		fclose(f);
 	}
 
-	close(sock_data);
 	strcpy(serverMessage, "");
 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
 	printf("Server reply: %.*s", rec, serverMessage);
+	close(sock_data);
 	return 1;
 }
-
+//put a file into ftp
 int myftp_putfile(char* fileName){
 	int port, fileSize, sock_data;
+	char fileCon[4096];
 	FILE *f;
+	bzero(fileCon, 4096);
 	
 	myftp_passivemode(&port);
 	sock_data = myftp_datasocketOpen(port);
@@ -126,23 +128,26 @@ int myftp_putfile(char* fileName){
 	sprintf(buffer, "STOR %s\r\n", fileName);
 	send(sock, buffer, strlen(buffer), 0);
 	
+	strcpy(serverMessage, "");
 	rec = recv(sock,serverMessage,strlen(serverMessage),0);
 	printf("Server reply: %.*s", rec, serverMessage);
-
+	
 	if (strstr(serverMessage, "150") != NULL) {
 		printf("test\n");
-	/*
-		f = fopen(fileName, "w");
+	
+		f = fopen(fileName, "r");
 		rec = recv(sock_data, fileCon, sizeof(fileCon), 0);
 		while (rec > 0) {
 			rec = recv(sock_data, fileCon, sizeof(fileCon), 0);
-			fprintf(f, "%s", fileCon);
+			
 		}
-		printf("GET SUCCESS: %d BYTES TRANSFERRED\n", fileSize);
+		printf("PUT SUCCESS: %d BYTES TRANSFERRED\n", fileSize);
 		fclose(f);
-		*/
+		
 	}
-
+	strcpy(serverMessage, "");
+	rec = recv(sock,serverMessage,strlen(serverMessage),0);
+	printf("Server reply: %.*s", rec, serverMessage);
  	close(sock_data);
  	return 1;
 }
@@ -288,7 +293,7 @@ int main(int argc, char *argv[]) {
 			send(sock, buffer, strlen(buffer),0);
 			strcpy(serverMessage, "");
 			rec = recv(sock,serverMessage,strlen(serverMessage),0);
-			printf("Server reply: %.*s",rec,serverMessage);
+			printf("Server reply: %.*s", rec, serverMessage);
 			
 			if (strstr(serverMessage, "550") != NULL) {
 				printf("DELETE FAILED.\n");
