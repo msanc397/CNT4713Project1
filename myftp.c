@@ -115,6 +115,37 @@ int myftp_getfile(char* fileName) {
 	return 1;
 }
 
+int myftp_putfile(char* fileName){
+	int port, fileSize, sock_data;
+	FILE *f;
+	
+	myftp_passivemode(&port);
+	sock_data = myftp_datasocketOpen(port);
+
+	strcpy(buffer,"");
+	sprintf(buffer, "STOR %s\r\n", fileName);
+	send(sock, buffer, strlen(buffer), 0);
+	
+	rec = recv(sock,serverMessage,strlen(serverMessage),0);
+	printf("Server reply: %.*s", rec, serverMessage);
+
+	if (strstr(serverMessage, "150") != NULL) {
+		printf("test\n");
+	/*
+		f = fopen(fileName, "w");
+		rec = recv(sock_data, fileCon, sizeof(fileCon), 0);
+		while (rec > 0) {
+			rec = recv(sock_data, fileCon, sizeof(fileCon), 0);
+			fprintf(f, "%s", fileCon);
+		}
+		printf("GET SUCCESS: %d BYTES TRANSFERRED\n", fileSize);
+		fclose(f);
+		*/
+	}
+
+ 	close(sock_data);
+ 	return 1;
+}
 //list files
 void myftp_list() {
 	int port, sock_data;
@@ -144,7 +175,7 @@ int main(int argc, char *argv[]) {
 	int test;
 	char* serverName;
 	struct hostent* host;
-	char userName[30], password[30], choice[20], fileDir[20];
+	char userName[30], password[30];
 	
 	if (argc < 2 || argc > 2) {
 		printf("Usage: %s <server name>\nPlease try again and enter server name.\n", argv[0]);
@@ -215,6 +246,7 @@ int main(int argc, char *argv[]) {
 	getchar();
 	
 	while (1) {
+		char choice[20], fileDir[40];
 		printf("myftp> ");
 		fgets(choice, 20, stdin);
 		strtok(choice, "\n");
@@ -247,12 +279,23 @@ int main(int argc, char *argv[]) {
 		else if (strncmp(choice, "put ", 4) == 0) {
 			strncpy(fileDir, ((char*)choice)+4, strlen(choice)-1);
 			printf("File name: %s\n", fileDir);
-			//myftp_putfile(fileDir);
+			myftp_putfile(fileDir);
 		}
 		else if (strncmp(choice, "delete ", 7) == 0) {
 			strncpy(fileDir, ((char*)choice)+7, strlen(choice)-1);
-			printf("File name: %s\n", fileDir);
-			//myftp_deletefile(fileDir);
+			sprintf(buffer, "DELE %s\r\n", fileDir);
+
+			send(sock, buffer, strlen(buffer),0);
+			strcpy(serverMessage, "");
+			rec = recv(sock,serverMessage,strlen(serverMessage),0);
+			printf("Server reply: %.*s",rec,serverMessage);
+			
+			if (strstr(serverMessage, "550") != NULL) {
+				printf("DELETE FAILED.\n");
+			} else {
+				printf("DELETE SUCCESSFUL.\n");
+			}
+			strcpy(serverMessage, "");
 		}
 		else {
 			printf("Invalid command.\n");
