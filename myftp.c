@@ -25,7 +25,6 @@ void myftp_quit() {
 	strcpy(serverMessage, "");
 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
 	printf("Server reply: %.*s", rec, serverMessage);
-	printf("Quit Successful.\n");
 	close(sock);
 }
 
@@ -62,13 +61,10 @@ int myftp_datasocketOpen(int port) {
 
 //get file command
 int myftp_getfile(char* fileName) {
-	int port, fileSize;
-	
-	strcpy(buffer, "TYPE I\r\n");
-	strcpy(serverMessage, "");
-	send(sock, buffer, strlen(buffer), 0);
-	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
-	printf("Server reply: %.*s", rec, serverMessage);
+	int port, fileSize, file, totalBytes, i;
+	char fileCon[4096];
+	FILE *f;
+	bzero(fileCon, 4096);
 	
 	myftp_passivemode(&port);
 	myftp_datasocketOpen(port);
@@ -78,27 +74,36 @@ int myftp_getfile(char* fileName) {
 	send(sock, buffer, strlen(buffer), 0);
 	
 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	if (strstr(serverMessage, "550") != NULL) {
+		printf("File size could not be found.\nGET FAILED.\n");
+		return 0;
+	}
 	fileSize = atoi(serverMessage + 4);
 	
 	sprintf(buffer, "RETR %s\r\n", fileName);
 	send(sock, buffer, strlen(buffer), 0);
 	strcpy(serverMessage, "");
+	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	printf("Server reply: %.*s", rec, serverMessage);
 	
-	
-	
-	while ((rec = recv(sock, serverMessage, sizeof(serverMessage), 0)) > 0) {
-		serverMessage[rec] = '\0';
-		printf("Server reply: %s", serverMessage);
-		fflush(stdout);
-		
-		if (strstr(serverMessage, "150") == NULL) {
-			printf("GET FAILED.\n");
-			close(sock_data);
-			return 0;
+	if (strstr(serverMessage, "150") != NULL) {
+		for (i = 0; i < fileSize; i++) {
+			printf("test\n");
+			f = fopen(fileName, "w");
+			rec = recv(sock_data, fileCon, strlen(fileCon), 0);
+			printf("%s", fileCon);
+			fwrite(fileCon, 1, sizeof(fileCon), f);
 		}
+		
+		
+		printf("GET SUCCESS: %d BYTES TRANSFERRED\n", fileSize);
+		fclose(f);
 	}
-	
+
 	close(sock_data);
+	strcpy(serverMessage, "");
+	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	printf("Server reply: %.*s", rec, serverMessage);
 	return 1;
 }
 
@@ -203,10 +208,6 @@ int main(int argc, char *argv[]) {
 	printf("LOGIN SUCCESSFUL.\n");
 	getchar();
 	
-	
-	
-	char s[100];
-	
 	while (1) {
 		printf("myftp> ");
 		fgets(choice, 20, stdin);
@@ -214,6 +215,7 @@ int main(int argc, char *argv[]) {
 		
 		if (strcmp(choice, "quit") == 0) {
 			myftp_quit();
+			printf("QUIT SUCCESSFUL.\n");
 			break;
 		}
 		else if (strcmp(choice, "ls") == 0) {
