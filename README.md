@@ -1,9 +1,9 @@
 # CNT4713Project1
 
 ## Group Information
-Bill Liza
+Bill Liza - 5847813
 
-Carlos Amasifuen
+Carlos Amasifuen - 6119813
 
 Mikhala Sanchez - 6082474
 
