@@ -84,7 +84,8 @@ int myftp_getfile(char* fileName) {
 	send(sock, buffer, strlen(buffer), 0);
 	strcpy(serverMessage, "");
 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
-	if (strstr(serverMessage, "550") != NULL) {
+	
+	if (strncmp(serverMessage, "213", 3) != 0) {
 		printf("File size could not be found.\nGET FAILED.\n");
 		return 0;
 	}
@@ -97,15 +98,12 @@ int myftp_getfile(char* fileName) {
 	printf("Server reply: %.*s", rec, serverMessage);
 	
 	if (strstr(serverMessage, "150") != NULL) {
-		for (i = 0; i < fileSize; i++) {
-			printf("test\n");
-			f = fopen(fileName, "w");
-			rec = recv(sock_data, fileCon, strlen(fileCon), 0);
-			printf("%s", fileCon);
-			fwrite(fileCon, 1, sizeof(fileCon), f);
+		f = fopen(fileName, "w");
+		rec = recv(sock_data, fileCon, sizeof(fileCon), 0);
+		while (rec > 0) {
+			rec = recv(sock_data, fileCon, sizeof(fileCon), 0);
+			fprintf(f, "%s", fileCon);
 		}
-		
-		
 		printf("GET SUCCESS: %d BYTES TRANSFERRED\n", fileSize);
 		fclose(f);
 	}
