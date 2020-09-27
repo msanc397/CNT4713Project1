@@ -10,12 +10,10 @@
 #include <ctype.h>
 
 static int sock;
-static int sock_data;
 static int rec;
 static char buffer[1024];
 static char serverMessage[1024];
 static char* IPAddress;
-static struct sockaddr_in dataInfo;
 static struct sockaddr_in sockInfo;
 
 //Quit program
@@ -47,27 +45,38 @@ int myftp_passivemode(int *port) {
 
 //Opens data channel
 int myftp_datasocketOpen(int port) {
-	dataInfo.sin_family = AF_INET;
+	struct sockaddr_in dataInfo;
+	int sock_data;
+	
+	printf("Creating data socket...\n");
+	if ((sock_data = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+		perror("Data socket formation failed");
+		exit(-1);
+	}
+	printf("Data socket creation successful.\n");
+	
 	dataInfo.sin_port = htons(port);
 	dataInfo.sin_addr = sockInfo.sin_addr;
-
+	dataInfo.sin_family = AF_INET;
+	
 	printf("Connecting...\n");
 	if (connect(sock_data, (struct sockaddr *)&dataInfo, sizeof(dataInfo)) < 0) {
 		perror("Connection failed");
 		exit(-1);
 	}
 	printf("Connection successful.\n");
+	return sock_data;
 }
 
 //get file command
 int myftp_getfile(char* fileName) {
-	int port, fileSize, file, totalBytes, i;
+	int port, fileSize, file, totalBytes, i, sock_data;
 	char fileCon[4096];
 	FILE *f;
 	bzero(fileCon, 4096);
 	
 	myftp_passivemode(&port);
-	myftp_datasocketOpen(port);
+	sock_data = myftp_datasocketOpen(port);
 	
 	strcpy(buffer, "");
 	sprintf(buffer, "SIZE %s\r\n", fileName);
@@ -109,27 +118,31 @@ int myftp_getfile(char* fileName) {
 
 //list files
 void myftp_list() {
-	int port;
+	int port, sock_data;
 	
 	myftp_passivemode(&port);
-	puts("after passive");
-	myftp_datasocketOpen(port);
+	sock_data = myftp_datasocketOpen(port);
 	
 	strcpy(buffer, "LIST\r\n");
 	send(sock, buffer, (int)strlen(buffer), 0);
 	strcpy(serverMessage, "");
-	puts("after passive");
-	printf("%s", serverMessage);
-	
+	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	printf("Server reply: %.*s", rec, serverMessage);
+	strcpy(serverMessage, "");
 	rec = recv(sock_data, serverMessage, sizeof(serverMessage), 0);
-	printf("Server reply: %s", serverMessage);
+	printf("%s", serverMessage);
 	strcpy(serverMessage, "");
 	
+	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	printf("Server reply: %.*s", rec, serverMessage);
+	strcpy(serverMessage, "");
+	rec = recv(sock_data, serverMessage, sizeof(serverMessage), 0);
+	strcpy(serverMessage, "");
 	close(sock_data);
 }
 
 int main(int argc, char *argv[]) {
-	int test, len;
+	int test;
 	char* serverName;
 	struct hostent* host;
 	char userName[30], password[30], choice[20], fileDir[20];
@@ -159,17 +172,11 @@ int main(int argc, char *argv[]) {
 	}
 	printf("Socket creation successful.\n");
 	
-	printf("Creating data socket...\n");
-	if ((sock_data = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-		perror("Data socket formation failed");
-		exit(-1);
-	}
-	printf("Data socket creation successful.\n");
-	
 	if ((test = (inet_pton(AF_INET, IPAddress, &(sockInfo.sin_addr)))) == 0) {
 		perror("Inet_pton failed");
 		exit(-1);
 	}
+	
 	printf("Connecting...\n");
 	if (connect(sock, (struct sockaddr *)&sockInfo, sizeof(sockInfo)) < 0) {
 		perror("Connection failed");
