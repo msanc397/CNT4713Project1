@@ -23,22 +23,19 @@
  static struct sockaddr_in dataInfo;
  static struct sockaddr_in sockInfo;
 
- //IP Address format for port
-char *ipFormat(char* ipaddy){
-	char delim[2] = ".";
-	char *token;
-	char str[20] = "";
-	token = strtok(ipaddy,delim);
 
-	while(token != NULL){
-		strcat(str,token);
-		if(token==strtok(NULL,delim)){
-			strcat(str,",");
-		}
-	}
-}
- 
-//ftp entering in passive mode
+//QUIT program
+ void myftp_quit(){ 
+ strcpy(buffer, "QUIT\r\n");
+ 	send(sock, buffer, strlen(buffer), 0);
+ 	strcpy(serverMessage, "");
+ 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+ 	printf("Server reply: %.*s", rec, serverMessage);
+	 printf("Quit successful!");
+ 	close(sock);
+ }
+
+ //ftp entering in passive mode
 int myftp_passivemode(int *port) {
  	int h1, h2, h3, h4, p1, p2;
  	char *result;
@@ -56,63 +53,90 @@ int myftp_passivemode(int *port) {
 
  }
  
- int myftp_datasocketOpen(int port) {
- 	dataInfo.sin_family = AF_INET;
- 	dataInfo.sin_port = htons(port);
- 	dataInfo.sin_addr = sockInfo.sin_addr;
+//Opens data channel
+int myftp_datasocketOpen(int port) {
+	dataInfo.sin_family = AF_INET;
+	dataInfo.sin_port = htons(port);
+	dataInfo.sin_addr = sockInfo.sin_addr;
+	printf("Connecting...\n");
+	if (connect(sock_data, (struct sockaddr *)&dataInfo, sizeof(dataInfo)) < 0) {
+		perror("Connection failed");
+		exit(-1);
+	}
+	printf("Connection successful.\n");
+}
 
- 	printf("Connecting...\n");
- 	if (connect(sock_data, (struct sockaddr *)&dataInfo, sizeof(dataInfo)) < 0) {
- 		perror("Connection failed");
- 		exit(-1);
- 	}
- 	
-	return printf("Connection successful.\n");
- }
-
-//myftp> get
- int myftp_getfile(char* fileName){
-	 int port, fileSize;
-
-	strcpy(buffer, "TYPE I\r\n");
- 	strcpy(serverMessage, "");
- 	send(sock, buffer, strlen(buffer), 0);
- 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
- 	printf("Server reply: %.*s", rec, serverMessage);
+//get file command
+ int myftp_getfile(char* fileName) {
+ 	int port, fileSize, file, totalBytes, i, sock_data;
+ 	char fileCon[4096];
+ 	FILE *f;
+ 	bzero(fileCon, 4096);
 
  	myftp_passivemode(&port);
  	myftp_datasocketOpen(port);
+ 	sock_data = myftp_datasocketOpen(port);
 
  	strcpy(buffer, "");
  	sprintf(buffer, "SIZE %s\r\n", fileName);
- 	send(sock, buffer, strlen(buffer), 0);
+	send(sock, buffer, strlen(buffer), 0);
+	
+	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	if (strstr(serverMessage, "550") != NULL) {
+		printf("File size could not be found.\nGET FAILED.\n");
+		return 0;
+	}
+	fileSize = atoi(serverMessage + 4);
+	
+	sprintf(buffer, "RETR %s\r\n", fileName);
+	send(sock, buffer, strlen(buffer), 0);
+	strcpy(serverMessage, "");
+	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	printf("Server reply: %.*s", rec, serverMessage);
+	
+	if (strstr(serverMessage, "150") != NULL) {
+		for (i = 0; i < fileSize; i++) {
+			printf("test\n");
+			f = fopen(fileName, "w");
+			rec = recv(sock_data, fileCon, strlen(fileCon), 0);
+			printf("%s", fileCon);
+			fwrite(fileCon, 1, sizeof(fileCon), f);
+		}
+		
+		
+		printf("GET SUCCESS: %d BYTES TRANSFERRED\n", fileSize);
+		fclose(f);
+	}
+	close(sock_data);
+	strcpy(serverMessage, "");
+	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	printf("Server reply: %.*s", rec, serverMessage);
+	return 1;
+}
 
- 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
- 	fileSize = atoi(serverMessage + 4);
+ //list files
+void myftp_list() {
+	int port;
+	
+	myftp_passivemode(&port);
+	//puts("after passive");
+	myftp_datasocketOpen(port);
+	
+	strcpy(buffer, "LIST\r\n");
+	send(sock, buffer, (int)strlen(buffer), 0);
+	//receive list
+	rec = recv(sock_data, serverMessage, sizeof(serverMessage), 0);
+	printf("Server reply: \n%s", serverMessage);
+	strcpy(serverMessage,"");
 
- 	sprintf(buffer, "RETR %s\r\n", fileName);
- 	send(sock, buffer, strlen(buffer), 0);
- 	strcpy(serverMessage, "");
+	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	printf("Server reply: %.*s",rec, serverMessage);
 
-	 myftp_passivemode(&port);
-	 printf("Port = %d\n",port);
-
-	 while ((rec = recv(sock, serverMessage, sizeof(serverMessage), 0)) > 0) {
- 		serverMessage[rec] = '\0';
- 		printf("Server reply: %s", serverMessage);
- 		fflush(stdout);
-
- 		if (strstr(serverMessage, "150") == NULL) {
- 			printf("GET FAILED.\n");
- 			close(sock_data);
- 			return 0;
- 		}
- 	}
-
- 	close(sock_data);
- 	return 1;
-
- }
+	rec = recv(sock,serverMessage,sizeof(serverMessage),0);
+	printf("Server reply: %.*s",rec,serverMessage);
+	
+	close(sock_data);
+}
 
 
 //myftp>put upload a file
@@ -171,40 +195,10 @@ int myftp_putfile(char* fileName){
 
  }
 
- void myftp_list(){
-		int port;
-
-		myftp_passivemode(&port);
-		myftp_datasocketOpen(port);
-		strcpy(buffer, "NLST\r\n");
- 		send(sock, buffer, (int)strlen(buffer), 0);
- 		strcpy(serverMessage, "");
- 	
-	 	while (1) {
- 			rec = recv(sock_data, serverMessage, sizeof(serverMessage), 0);
- 			printf("Server reply: %s", serverMessage);
- 			strcpy(serverMessage, "");
- 		}
-
-		 close(sock_data);
-		  rec=226;
- }
- 
-//QUIT
- void myftp_quit(){ 
- strcpy(buffer, "QUIT\r\n");
- 	send(sock, buffer, strlen(buffer), 0);
- 	strcpy(serverMessage, "");
- 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
- 	printf("Server reply: %.*s", rec, serverMessage);
-	 printf("Quit successful!");
- 	close(sock);
- }
-
 
 //Main
 int main(int argc, char *argv[]) {
-    int test, len, numBytes;
+    int test, len;
     char* serverName;
     struct hostent* host;
     char userName[30], password[30], choice[20], fileDir[20];
@@ -292,65 +286,37 @@ int main(int argc, char *argv[]) {
 		fgets(choice, 20,stdin);
 		strtok(choice,"\n");
 
-		//list files in the current directory on the remote server
-		if(strcmp(choice,"ls") == 0){
-			myftp_list();
-			strcpy(buffer,"PORT ");
-			//make ip a readable format
-			char delim[2]=".";
-			char* token;
-			char str[20]="";
-			token = strtok(IPAddress,delim);
-			while(token != NULL)
-			{
-				if(token == strtok(NULL,delim)){
-					strcpy(str,",");
-				}
-			}
+		printf("myftp> ");
+ 		fgets(choice, 20, stdin);
+ 		strtok(choice, "\n");
 
-			//append ip to port
-			strcat(buffer, str);
-			printf("%s", str);
-			puts("after ip");
-			strcat(buffer, ",2,1");
-			strcat(buffer, "\r\n");
-			puts("cat");
+ 		if (strcmp(choice, "quit") == 0) {
+ 			myftp_quit();
+ 			printf("QUIT SUCCESSFUL.\n");
+ 			break;
+ 		}
+ 		else if (strcmp(choice, "ls") == 0) {
+			myftp_list();
+		}	
+
+		else if (strncmp(choice, "cd ", 3) == 0) {
+			sprintf(buffer, "CWD %s\r\n", choice+3);
 			send(sock, buffer, strlen(buffer), 0);
-			puts("cat");
-			strcpy(serverMessage, "");
-			puts("cpy");
-			//rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
-			puts("rec");
-			printf("Server reply: %.*s", rec, serverMessage);
-			strcpy(buffer, "LIST\r\n");
-			send(sock, buffer, strlen(buffer), 0);
-			strcpy(serverMessage, "");
 			rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
 			printf("Server reply: %.*s", rec, serverMessage);
-		}
+			if (strstr(serverMessage, "250") != NULL) {
+				printf("CD SUCCESSFUL.\n");
+			} else {
+				printf("CD FAILED.\n");
+			}
+	 	}
+
+		else if (strncmp(choice, "get ", 4) == 0) {
+			strncpy(fileDir, ((char*)choice)+4, strlen(choice)-1);
+			printf("File name: %s\n", fileDir);
+			myftp_getfile(fileDir);
 			
-		//myftp> cd remote-dir goes here
-		//change current directory to "remote-dir" on the remote server.
-		else if (strncmp(choice, "cd", 3) == 0) {
-			 sprintf(fileDir, "CWD %s\r\n", choice+3);
-	 		 send(sock, fileDir, strlen(fileDir),0);
-			 rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
-
- 			 printf("Server reply: %.*s", rec, serverMessage);
- 			 if (strstr(serverMessage, "250") != NULL) {
- 					printf("CD SUCCESSFUL.\n");
- 			 } else {
- 				printf("CD FAILED.\n");
- 			}
 		}
-
-		//myftp> get remote-file
-		//download file "remote-file" from remote server to local machine. 
- 		else if (strncmp(choice, "get", 4) == 0) {
- 		strncpy(fileDir, ((char*)choice)+4, strlen(choice)-1);
-		printf("File name: %s\n",fileDir);	
-		myftp_getfile(fileDir);
- 		}
 
 		//myftp> put local-file
 		//upload file "local-file" from local machine to to remote server.
@@ -377,18 +343,13 @@ int main(int argc, char *argv[]) {
 				 printf("DELETE SUCCESSFUL");
 			 }
 			 
+				/*	strncpy(fileDir, ((char*)choice)+7, strlen(choice)-1);
+			printf("File name: %s\n", fileDir);*/
  		}
 
-		//ftp server will quit and 
-		//socket will close.
-		else if(strcmp(choice,"quit")== 0){ 
-				myftp_quit();
-				break;
-		}
  		else {
  			printf("Invalid command.\n");
- 		}
-		 
-		 return 0;
+ 		}	 
 	}
+	return 0;
 }
