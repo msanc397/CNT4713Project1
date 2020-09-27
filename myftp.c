@@ -55,15 +55,27 @@ int myftp_passivemode(int *port) {
  
 //Opens data channel
 int myftp_datasocketOpen(int port) {
-	dataInfo.sin_family = AF_INET;
+	struct sockaddr_in dataInfo;
+	int sock_data;
+	
+	printf("Creating data socket...\n");
+	if ((sock_data = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+		perror("Data socket formation failed");
+		exit(-1);
+	}
+	printf("Data socket creation successful.\n");
+	
 	dataInfo.sin_port = htons(port);
 	dataInfo.sin_addr = sockInfo.sin_addr;
+	dataInfo.sin_family = AF_INET;
+	
 	printf("Connecting...\n");
 	if (connect(sock_data, (struct sockaddr *)&dataInfo, sizeof(dataInfo)) < 0) {
 		perror("Connection failed");
 		exit(-1);
 	}
 	printf("Connection successful.\n");
+	return sock_data;
 }
 
 //get file command
@@ -107,10 +119,10 @@ int myftp_datasocketOpen(int port) {
 		printf("GET SUCCESS: %d BYTES TRANSFERRED\n", fileSize);
 		fclose(f);
 	}
-	close(sock_data);
-	strcpy(serverMessage, "");
+strcpy(serverMessage, "");
 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
 	printf("Server reply: %.*s", rec, serverMessage);
+	close(sock_data);
 	return 1;
 }
 
@@ -119,67 +131,63 @@ void myftp_list() {
 	int port;
 	
 	myftp_passivemode(&port);
-	//puts("after passive");
-	myftp_datasocketOpen(port);
+	sock_data = myftp_datasocketOpen(port);
 	
 	strcpy(buffer, "LIST\r\n");
 	send(sock, buffer, (int)strlen(buffer), 0);
-	//receive list
-	rec = recv(sock_data, serverMessage, sizeof(serverMessage), 0);
-	printf("Server reply: \n%s", serverMessage);
-	strcpy(serverMessage,"");
-
+	strcpy(serverMessage, "");
 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
-	printf("Server reply: %.*s",rec, serverMessage);
-
-	rec = recv(sock,serverMessage,sizeof(serverMessage),0);
-	printf("Server reply: %.*s",rec,serverMessage);
+	printf("Server reply: %.*s", rec, serverMessage);
+	strcpy(serverMessage, "");
+	rec = recv(sock_data, serverMessage, sizeof(serverMessage), 0);
+	printf("%s", serverMessage);
+	strcpy(serverMessage, "");
 	
+	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	printf("Server reply: %.*s", rec, serverMessage);
+	strcpy(serverMessage, "");
+	rec = recv(sock_data, serverMessage, sizeof(serverMessage), 0);
+	strcpy(serverMessage, "");
 	close(sock_data);
 }
 
 
-//myftp>put upload a file
+//put a file into ftp
 int myftp_putfile(char* fileName){
-	int port, fileSize;
-	strcpy(buffer, "TYPE I\r\n");
-	strcpy(serverMessage,"");
-	send(sock,buffer,strlen(buffer),0);
-	rec = recv(sock,serverMessage,strlen(serverMessage),0);
-	printf("Server reply: %.*s",rec,serverMessage);
-
+	int port, fileSize, sock_data;
+	char fileCon[4096];
+	FILE *f;
+	bzero(fileCon, 4096);
+	
 	myftp_passivemode(&port);
-	myftp_datasocketOpen(port);
+	sock_data = myftp_datasocketOpen(port);
 
 	strcpy(buffer,"");
-	sprintf(buffer, "SIZE %s\r\n",fileName);
-	send(sock,buffer,strlen(buffer),0);
-
-	rec = recv(sock,serverMessage,strlen(serverMessage),0);
-	fileSize = atoi(serverMessage+4);
-
 	sprintf(buffer, "STOR %s\r\n", fileName);
- 	send(sock, buffer, strlen(buffer), 0);
- 	strcpy(serverMessage, "");
-
-	 myftp_passivemode(&port);
-	 printf("Port = %d\n",port);
-
-	 while ((rec = recv(sock, serverMessage, sizeof(serverMessage), 0)) > 0) {
- 		serverMessage[rec] = '\0';
- 		printf("Server reply: %s", serverMessage);
- 		fflush(stdout);
-
- 		if (strstr(serverMessage, "150") == NULL) {
- 			printf("PUT FAILED.\n");
- 			close(sock_data);
- 			return 0;
- 		}
- 	}
-
+	send(sock, buffer, strlen(buffer), 0);
+	
+	strcpy(serverMessage, "");
+	rec = recv(sock,serverMessage,strlen(serverMessage),0);
+	printf("Server reply: %.*s", rec, serverMessage);
+	
+	if (strstr(serverMessage, "150") != NULL) {
+		printf("test\n");
+	
+		f = fopen(fileName, "r");
+		rec = recv(sock_data, fileCon, sizeof(fileCon), 0);
+		while (rec > 0) {
+			rec = recv(sock_data, fileCon, sizeof(fileCon), 0);
+			
+		}
+		printf("PUT SUCCESS: %d BYTES TRANSFERRED\n", fileSize);
+		fclose(f);
+		
+	}
+	strcpy(serverMessage, "");
+	rec = recv(sock,serverMessage,strlen(serverMessage),0);
+	printf("Server reply: %.*s", rec, serverMessage);
  	close(sock_data);
  	return 1;
-
 }
 
  //delete file
