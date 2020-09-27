@@ -79,9 +79,10 @@ int myftp_getfile(char* fileName) {
 	sock_data = myftp_datasocketOpen(port);
 	
 	strcpy(buffer, "");
+	
 	sprintf(buffer, "SIZE %s\r\n", fileName);
 	send(sock, buffer, strlen(buffer), 0);
-	
+	strcpy(serverMessage, "");
 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
 	if (strstr(serverMessage, "550") != NULL) {
 		printf("File size could not be found.\nGET FAILED.\n");
