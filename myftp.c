@@ -18,6 +18,7 @@ static char* IPAddress;
 static struct sockaddr_in dataInfo;
 static struct sockaddr_in sockInfo;
 
+//Quit program
 void myftp_quit() {
 	strcpy(buffer, "QUIT\r\n");
 	send(sock, buffer, strlen(buffer), 0);
@@ -28,6 +29,7 @@ void myftp_quit() {
 	close(sock);
 }
 
+//Enters passive mode.
 int myftp_passivemode(int *port) {
 	int h1, h2, h3, h4, p1, p2;
 	char *result;
@@ -37,8 +39,6 @@ int myftp_passivemode(int *port) {
 	strcpy(serverMessage, "");
 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
 	printf("Server reply: %.*s", rec, serverMessage);
-	if (rec != 227)
-		return 0;
 	result = strrchr(serverMessage, '(');
 	sscanf(result, "(%d,%d,%d,%d,%d,%d)", &h1, &h2, &h3, &h4, &p1, &p2);
 
@@ -46,25 +46,29 @@ int myftp_passivemode(int *port) {
 	return 1;
 }
 
+//Opens data channel
 int myftp_datasocketOpen(int port) {
 	dataInfo.sin_family = AF_INET;
 	dataInfo.sin_port = htons(port);
 	dataInfo.sin_addr = sockInfo.sin_addr;
 
 	printf("Connecting...\n");
-	if (connect(sock_data, (struct sockaddr *)&sockInfo, sizeof(sockInfo)) < 0) {
+	if (connect(sock_data, (struct sockaddr *)&dataInfo, sizeof(dataInfo)) < 0) {
 		perror("Connection failed");
 		exit(-1);
 	}
 	printf("Connection successful.\n");
-
-
 }
+
+//get file command
 int myftp_getfile(char* fileName) {
-	int port, fileSize, file, totalBytes, i;
-	char fileCon[4096];
-	FILE *f;
-	bzero(fileCon, 4096);
+	int port, fileSize;
+	
+	strcpy(buffer, "TYPE I\r\n");
+	strcpy(serverMessage, "");
+	send(sock, buffer, strlen(buffer), 0);
+	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
+	printf("Server reply: %.*s", rec, serverMessage);
 	
 	myftp_passivemode(&port);
 	myftp_datasocketOpen(port);
@@ -74,52 +78,47 @@ int myftp_getfile(char* fileName) {
 	send(sock, buffer, strlen(buffer), 0);
 	
 	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
-	if (strstr(serverMessage, "550") != NULL) {
-		printf("File size could not be found.\nGET FAILED.\n");
-		return 0;
-	}
 	fileSize = atoi(serverMessage + 4);
 	
 	sprintf(buffer, "RETR %s\r\n", fileName);
 	send(sock, buffer, strlen(buffer), 0);
 	strcpy(serverMessage, "");
-	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
-	printf("Server reply: %.*s", rec, serverMessage);
 	
-	if (strstr(serverMessage, "150") != NULL) {
-		for (i = 0; i < fileSize; i++) {
-			printf("test\n");
-			f = fopen(fileName, "w");
-			rec = recv(sock_data, fileCon, strlen(fileCon), 0);
-			printf("%s", fileCon);
-			fwrite(fileCon, 1, sizeof(fileCon), f);
+	
+	
+	while ((rec = recv(sock, serverMessage, sizeof(serverMessage), 0)) > 0) {
+		serverMessage[rec] = '\0';
+		printf("Server reply: %s", serverMessage);
+		fflush(stdout);
+		
+		if (strstr(serverMessage, "150") == NULL) {
+			printf("GET FAILED.\n");
+			close(sock_data);
+			return 0;
 		}
 	}
-	printf("GET SUCCESS: %d BYTES TRANSFERRED\n", fileSize);
+	
 	close(sock_data);
-	fclose(f);
-	strcpy(serverMessage, "");
-	rec = recv(sock, serverMessage, sizeof(serverMessage), 0);
-	printf("Server reply: %.*s", rec, serverMessage);
 	return 1;
 }
 
-
+//list files
 void myftp_list() {
 	int port;
 	
 	myftp_passivemode(&port);
+	puts("after passive");
 	myftp_datasocketOpen(port);
 	
-	strcpy(buffer, "NLST\r\n");
+	strcpy(buffer, "LIST\r\n");
 	send(sock, buffer, (int)strlen(buffer), 0);
 	strcpy(serverMessage, "");
-	while (1) {
-		rec = recv(sock_data, serverMessage, sizeof(serverMessage), 0);
-		printf("Server reply: %s", serverMessage);
-		strcpy(serverMessage, "");
+	puts("after passive");
+	printf("%s", serverMessage);
 	
-	}
+	rec = recv(sock_data, serverMessage, sizeof(serverMessage), 0);
+	printf("Server reply: %s", serverMessage);
+	strcpy(serverMessage, "");
 	
 	close(sock_data);
 }
@@ -244,17 +243,8 @@ int main(int argc, char *argv[]) {
 		}
 		else if (strncmp(choice, "delete ", 7) == 0) {
 			strncpy(fileDir, ((char*)choice)+7, strlen(choice)-1);
-			sprintf(buffer, "DELE %s\r\n", fileDir);
-
-			send(sock, buffer, strlen(buffer),0);
-			rec = recv(sock,serverMessage,strlen(serverMessage),0);
-			printf("Server reply: %.*s",rec,serverMessage);
-			
-			if (strstr(serverMessage, "550") != NULL) {
-				printf("DELETE FAILED.\n");
-			} else {
-				printf("DELETE SUCCESSFUL.\n");
-			}
+			printf("File name: %s\n", fileDir);
+			//myftp_deletefile(fileDir);
 		}
 		else {
 			printf("Invalid command.\n");
